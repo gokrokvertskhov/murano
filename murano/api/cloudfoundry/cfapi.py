@@ -80,7 +80,7 @@ class Controller(object):
 
     def create_env(self, m_cli, space_guid):
         LOG.debug('Adding new environment for the space: %s' % space_guid)
-        body = {'name': space_guid}
+        body = {'name': 'a'+space_guid}
         env_id = m_cli.environments.create(body)
         MAPPER.setEnvironment(space_guid, env_id)
         return env_id
