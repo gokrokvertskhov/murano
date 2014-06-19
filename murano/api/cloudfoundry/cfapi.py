@@ -33,6 +33,7 @@ class CFMuranoMapper(object):
     def __init__(self):
         self.spaceToEnv = {}
         self.orgToTenant = {}
+        self.srv_instances = {}
 
     def getEnvironment(self, space_guid):
         return self.spaceToEnv.get(space_guid, None)
@@ -43,8 +44,16 @@ class CFMuranoMapper(object):
     def setEnvironment(self, space_guid, env_id):
         self.spaceToEnv[space_guid] = env_id
 
-    def setTenant(self, org_guid, tenent_id):
-        self.orgToTenant[org_guid] = tenent_id
+    def setTenant(self, org_guid, tenant_id):
+        self.orgToTenant[org_guid] = tenant_id
+
+    def mapInstanceToService(self, instance_id, service_id, env_id, tenant):
+        self.srv_instances[instance_id] = {'service_id': service_id,
+                                           'env_id': env_id,
+                                           'tenant': tenant}
+
+    def getServiceForInstance(self, instance_id):
+        return self.srv_instances.get(instance_id, None)
 
 MAPPER = CFMuranoMapper()
 
@@ -113,6 +122,7 @@ class Controller(object):
         LOG.debug('Adding service %s' % package.name)
 
         service = self.makeService(space_guid, package)
+        MAPPER.mapInstanceToService(instance_id, service['?']['id'], env_id.id, tenant)
         service.update(self.makeInstance())
 
         # Now we need to obtain session to modify the env
@@ -122,16 +132,47 @@ class Controller(object):
                       data=service,
                       session_id=session_id)
         m_cli.sessions.deploy(env_id.id, session_id)
-        return
+        return {}
 
     def bind(self, req, instance_id, id):
+        service = MAPPER.getServiceForInstance(instance_id)
+        if not service:
+            return {}
+
+        service_id = service['service_id']
+        env_id = service['env_id']
+        tenant = service['tenant']
+        user, passwd, keystone = self.check_auth(req, tenant)
+        # Once we get here we were authorized by keystone
+        token = keystone.auth_ref['token']['id']
+        m_cli = muranoclient(token)
+
+        env = env_get(m_cli, env_id)
+        LOG.debug ('Got environemtn %s' % env)
         return
 
     def unbind(self, req, instance_id, id):
         return
 
-    def deprovision(self, req, id):
-        return
+    def deprovision(self, req, instance_id):
+        service = MAPPER.getServiceForInstance(instance_id)
+        if not service:
+            return {}
+
+        service_id = service['service_id']
+        env_id = service['env_id']
+        tenant = service['tenant']
+        user, passwd, keystone = self.check_auth(req, tenant)
+        #Once we get here we were authorized by keystone
+        token = keystone.auth_ref['token']['id']
+        m_cli = muranoclient(token)
+
+        session_id = create_session(m_cli, env_id)
+
+        m_cli.services.delete(env_id,'/' + service_id, session_id)
+        m_cli.sessions.deploy(env_id, session_id)
+
+        return {}
 
     #Murano and OS specific calls
 
@@ -199,13 +240,14 @@ class Controller(object):
 
     def makeInstance(self):
         id = str(uuid.uuid4())
-        return dict(instance={"flavor": "m1.medium", "image": "cloud-fedora",
-                              "?": {"type": "io.murano.resources.Instance",
+        return dict(instance={"flavor": "m1.medium", "image": "F18-x86_64-cfntools",
+                              "?": {"type": "io.murano.resources.LinuxMuranoInstance",
                                     "id": id},
                               "name": "wvbtehwlbl08z2"})
 
     def makeService(self, name, package):
         id = str(uuid.uuid4())
+
         return {"name": name,
                 "?": {"_26411a1861294160833743e45d0eaad9": {"name": package.name},
                               "type": package.fully_qualified_name
@@ -230,3 +272,8 @@ def create_session(client, environment_id):
 
 def create_resource():
     return wsgi.Resource(Controller())
+
+def env_get(client, env_id):
+    session_id = create_session(client, env_id)
+    env = client.environments.get(env_id, session_id)
+    return env

@@ -34,6 +34,11 @@ class API(wsgi.Router):
                        action='provision',
                        conditions={'method': ['PUT']})
 
+        mapper.connect('/v2/service_instances/{instance_id}',
+                       controller=services_resource,
+                       action='deprovision',
+                       conditions={'method': ['DELETE']})
+
         mapper.connect('/cf/environments',
                        controller=services_resource,
                        action='list_env',
