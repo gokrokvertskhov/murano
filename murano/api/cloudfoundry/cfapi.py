@@ -113,7 +113,9 @@ class Controller(object):
         m_cli = muranoclient(token)
 
         if env_id is None:
-            env_id = self.create_env(m_cli, space_guid)
+            env_id = find_env(m_cli, space_guid)
+            if env_id is None:
+                env_id = self.create_env(m_cli, space_guid)
         LOG.debug('Auth: %s' % keystone.auth_ref)
         tenant_id = keystone.auth_ref['token']['id']
         ctx = context.RequestContext(user=user, tenant=tenant_id, is_admin=True)
@@ -134,7 +136,8 @@ class Controller(object):
         m_cli.sessions.deploy(env_id.id, session_id)
         return {}
 
-    def bind(self, req, instance_id, id):
+    def bind(self, req, body, instance_id, app_id):
+        filtered=[u'?',u'instance']
         service = MAPPER.getServiceForInstance(instance_id)
         if not service:
             return {}
@@ -148,11 +151,18 @@ class Controller(object):
         m_cli = muranoclient(token)
 
         env = env_get(m_cli, env_id)
-        LOG.debug ('Got environemtn %s' % env)
-        return
+        LOG.debug ('Got environment %s' % env)
+        service = get_service(env, service_id)
+        LOG.debug('Got service %s' % service)
+        credentials = {}
+        for k,v in six.iteritems(service):
+            if k not in filtered:
+                credentials[k] = v
 
-    def unbind(self, req, instance_id, id):
-        return
+        return {'credentials': credentials}
+
+    def unbind(self, req, instance_id, app_id):
+        return {}
 
     def deprovision(self, req, instance_id):
         service = MAPPER.getServiceForInstance(instance_id)
@@ -240,7 +250,7 @@ class Controller(object):
 
     def makeInstance(self):
         id = str(uuid.uuid4())
-        return dict(instance={"flavor": "m1.medium", "image": "F18-x86_64-cfntools",
+        return dict(instance={"flavor": "m1.medium", "image": "cloud-ubuntu-12.04-amd64",
                               "?": {"type": "io.murano.resources.LinuxMuranoInstance",
                                     "id": id},
                               "name": "wvbtehwlbl08z2"})
@@ -277,3 +287,22 @@ def env_get(client, env_id):
     session_id = create_session(client, env_id)
     env = client.environments.get(env_id, session_id)
     return env
+
+def get_service(env, service_id):
+    for service in env.services:
+        if service['?']['id'] == service_id:
+            return service
+    return None
+
+def service_to_cf(service):
+    credentials = {}
+    LOG.debug('Service :%s' % service.to_dict())
+    return {}
+
+def find_env(cli, env_name):
+    environments = cli.environments.list()
+    LOG.debug('Environment::List {0}'.format(environments))
+    for env in environments:
+        if env.name == env_name:
+             return env
+    return None

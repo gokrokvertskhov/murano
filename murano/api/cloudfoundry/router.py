@@ -34,6 +34,15 @@ class API(wsgi.Router):
                        action='provision',
                        conditions={'method': ['PUT']})
 
+        mapper.connect('/v2/service_instances/{instance_id}/service_bindings/{app_id}',
+                       controller=services_resource,
+                       action='bind',
+                       conditions={'method': ['PUT']})
+        mapper.connect('/v2/service_instances/{instance_id}/service_bindings/{app_id}',
+                       controller=services_resource,
+                       action='unbind',
+                       conditions={'method': ['DELETE']})
+
         mapper.connect('/v2/service_instances/{instance_id}',
                        controller=services_resource,
                        action='deprovision',
