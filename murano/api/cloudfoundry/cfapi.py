@@ -17,6 +17,8 @@ import pickle
 import six
 import uuid
 
+from webob import exc
+
 from oslo.config import cfg
 from murano import context
 from murano.api.cloudfoundry import auth as keystone_auth
@@ -149,15 +151,32 @@ class Controller(object):
         # Once we get here we were authorized by keystone
         token = keystone.auth_ref['token']['id']
         m_cli = muranoclient(token)
+        try:
+            env = env_get(m_cli, env_id)
+        except:
+           raise exc.HTTPConflict('Service is not ready')
 
-        env = env_get(m_cli, env_id)
         LOG.debug ('Got environment %s' % env)
         service = get_service(env, service_id)
         LOG.debug('Got service %s' % service)
+
+        #Verify the env status
+        # if it is not deployed return error
+        status = service['?'].get('status', 'not ready')
+        if status != 'ready':
+            raise exc.HTTPConflict('Service is not ready')
+
         credentials = {}
+        credentials['murano-class']=service['?']['type']
         for k,v in six.iteritems(service):
             if k not in filtered:
                 credentials[k] = v
+        instance = service.get('instance', None)
+        if instance:
+            credentials['host_name'] = instance['name']
+            if instance.get('assignFloatingIp', False):
+                credentials['floatingIP'] = instance.get('floatingIpAddress', None)
+
 
         return {'credentials': credentials}
 
@@ -250,10 +269,11 @@ class Controller(object):
 
     def makeInstance(self):
         id = str(uuid.uuid4())
+        name = uuid.uuid1().hex
         return dict(instance={"flavor": "m1.medium", "image": "cloud-ubuntu-12.04-amd64",
                               "?": {"type": "io.murano.resources.LinuxMuranoInstance",
                                     "id": id},
-                              "name": "wvbtehwlbl08z2"})
+                              "name": name})
 
     def makeService(self, name, package):
         id = str(uuid.uuid4())
