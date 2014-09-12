@@ -51,9 +51,11 @@ def main():
         launcher = service.ServiceLauncher()
 
         app = config.load_paste_app('murano')
+        app_actions = config.load_paste_app('murano-actions')
         port, host = (config.CONF.bind_port, config.CONF.bind_host)
 
         launcher.launch_service(wsgi.Service(app, port, host))
+        launcher.launch_service(wsgi.Service(app_actions, port+2, host))
         launcher.launch_service(server.get_rpc_service())
         launcher.launch_service(server.get_notification_service())
         launcher.launch_service(stats.StatsCollectingService())
