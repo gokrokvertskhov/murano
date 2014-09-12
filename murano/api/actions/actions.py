@@ -69,8 +69,8 @@ class Controller(object):
         #Creds={'username:'', 'password''}
         # We need to add auth_url, endpoint, project_name
         auth_url = getAuthUrl()
-        creds['auth_url'] = "http://172.16.40.137:5000/v2.0"
-        creds['endpount'] = "http://172.16.40.137:5000/v2.0"
+        creds['auth_url'] = auth_url
+        creds['endpount'] = auth_url
         creds['project_name'] = project_name
 
         #Obtain token for user authenticated in proper tenant

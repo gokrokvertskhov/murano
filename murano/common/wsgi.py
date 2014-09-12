@@ -285,7 +285,8 @@ class Request(webob.Request):
     default_request_content_types = ('application/json',
                                      'application/xml',
                                      'application/murano-packages-json-patch',
-                                     'multipart/form-data')
+                                     'multipart/form-data',
+                                     'text/plain')
     default_accept_types = ('application/json', 'application/xml')
     default_accept_type = 'application/json'
 
@@ -630,7 +631,8 @@ class RequestDeserializer(object):
             'application/xml': XMLDeserializer(),
             'application/json': JSONDeserializer(),
             'application/murano-packages-json-patch': JSONPatchDeserializer(),
-            'multipart/form-data': FormDataDeserializer()
+            'multipart/form-data': FormDataDeserializer(),
+            'text/plain': BlankDeserializer()
         }
         self.body_deserializers.update(body_deserializers or {})
 
@@ -720,6 +722,11 @@ class TextDeserializer(ActionDispatcher):
 
     def default(self, request):
         return {}
+
+
+class BlankDeserializer(TextDeserializer):
+    def default(self, request):
+        return {'body': {}}
 
 
 class JSONDeserializer(TextDeserializer):
