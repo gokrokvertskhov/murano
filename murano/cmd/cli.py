@@ -19,8 +19,6 @@ import sys
 
 import eventlet
 
-import keystoneclient.v2_0.client as ksclient
-
 if os.name == 'nt':
     # eventlet monkey patching causes subprocess.Popen to fail on Windows
     # when using pipes due to missing non blocking I/O support
