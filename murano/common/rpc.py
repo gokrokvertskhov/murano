@@ -37,6 +37,9 @@ class EngineClient(object):
         client_target = target.Target('murano', 'tasks')
         self._client = rpc.RPCClient(transport, client_target, timeout=15)
 
+    def run_task(self, task):
+        return self._client.call({}, 'handle_task', task=task)
+
     def handle_task(self, task):
         return self._client.cast({}, 'handle_task', task=task)
 
