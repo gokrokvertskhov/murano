@@ -25,7 +25,7 @@ from oslo_messaging import target
 from oslo_serialization import jsonutils
 from oslo_service import service
 
-from murano.common import auth_utils
+#from murano.common import auth_utils
 from murano.common.helpers import token_sanitizer
 from murano.common.plugins import extensions_loader
 from murano.common import rpc
@@ -275,16 +275,8 @@ class TaskExecutor(object):
     def _create_trust(self):
         if not CONF.engine.use_trusts:
             return
-        trust_id = self._session.system_attributes.get('TrustId')
-        if not trust_id:
-            trust_id = auth_utils.create_trust(
-                self._session.token, self._session.project_id)
-            self._session.system_attributes['TrustId'] = trust_id
-        self._session.trust_id = trust_id
+
 
     def _delete_trust(self):
-        trust_id = self._session.trust_id
-        if trust_id:
-            auth_utils.delete_trust(self._session.trust_id)
-            self._session.system_attributes['TrustId'] = None
-            self._session.trust_id = None
+        pass
+
