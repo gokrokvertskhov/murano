@@ -23,9 +23,7 @@ import tempfile
 import uuid
 
 import eventlet
-from muranoclient.common import exceptions as muranoclient_exc
-from muranoclient.glance import client as glare_client
-import muranoclient.v1.client as muranoclient
+
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_log import versionutils
@@ -68,55 +66,11 @@ class ApiPackageLoader(package_loader.MuranoPackageLoader):
         self._downloaded = []
 
     def _get_glare_client(self):
-        glare_settings = CONF.glare
-        session = auth_utils.get_client_session(self._execution_session)
-        token = session.auth.get_token(session)
-        if self._last_glare_token != token:
-            self._last_glare_token = token
-            self._glare_client = None
-
-        if self._glare_client is None:
-            url = glare_settings.url
-            if not url:
-                url = session.get_endpoint(
-                    service_type='artifact',
-                    interface=glare_settings.endpoint_type,
-                    region_name=CONF.home_region)
-
-            self._glare_client = glare_client.Client(
-                endpoint=url, token=token,
-                insecure=glare_settings.insecure,
-                key_file=glare_settings.key_file or None,
-                ca_file=glare_settings.ca_file or None,
-                cert_file=glare_settings.cert_file or None,
-                type_name='murano',
-                type_version=1)
-        return self._glare_client
+        pass
 
     @property
     def client(self):
-        murano_settings = CONF.murano
-        last_glare_client = self._glare_client
-        if CONF.engine.packages_service in ['glance', 'glare']:
-            if CONF.engine.packages_service == 'glance':
-                versionutils.report_deprecated_feature(
-                    LOG,
-                    _LW("'glance' packages_service option has been renamed "
-                        "to 'glare', please update your configuration"))
-            artifacts_client = self._get_glare_client()
-        else:
-            artifacts_client = None
-        if artifacts_client != last_glare_client:
-            self._murano_client = None
-        if not self._murano_client:
-            parameters = auth_utils.get_session_client_parameters(
-                service_type='application-catalog',
-                execution_session=self._execution_session,
-                conf=murano_settings
-            )
-            self._murano_client = muranoclient.Client(
-                artifacts_client=artifacts_client, **parameters)
-        return self._murano_client
+        pass
 
     def load_class_package(self, class_name, version_spec):
         packages = self._class_cache.get(class_name)
